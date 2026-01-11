@@ -11,7 +11,7 @@ from pathlib import Path
 # ==========================================
 # 1. 환경 설정 및 API 키
 # ==========================================
-st.set_page_config(page_title="K-하이테크 교육 추천(최종)", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="K-하이테크 교육 추천", layout="wide", page_icon="🏭")
 
 # ⚠️ 경로 수정 (사용자 지정 경로)
 BASE_DIR = Path(__file__).resolve().parent
@@ -62,9 +62,6 @@ def load_all_data(base_path):
                 df_master = pd.read_csv(master_file, encoding="cp949")
             except UnicodeDecodeError:
                 df_master = pd.read_csv(master_file, encoding="utf-8-sig")
-
-            # 컬럼명 확인
-            st.write("df_master columns:", df_master.columns.tolist())
 
             # 컬럼명 공백 제거(안전장치)
             df_master.columns = df_master.columns.astype(str).str.strip()
