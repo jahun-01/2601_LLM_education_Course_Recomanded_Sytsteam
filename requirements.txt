@@ -1,0 +1,5 @@
+numpy==2.4.0
+pandas==2.3.3
+streamlit==1.52.2
+google-generativeai
+python-dotenv
