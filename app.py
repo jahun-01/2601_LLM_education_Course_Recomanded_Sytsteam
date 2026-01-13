@@ -11,7 +11,7 @@ from pathlib import Path
 # ==========================================
 # 1. 환경 설정 및 API 키
 # ==========================================
-st.set_page_config(page_title="K-하이테크 교육 추천", layout="wide", page_icon="🏭")
+st.set_page_config(page_title="한국공학대학교 교육 추천", layout="wide", page_icon="🏭")
 
 # ⚠️ 경로 수정 (사용자 지정 경로)
 BASE_DIR = Path(__file__).resolve().parent
@@ -20,6 +20,7 @@ DATA_DIR = BASE_DIR / "data"
 # ⚠️ API 키 입력 필수
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except Exception:
     pass
@@ -57,7 +58,7 @@ def load_all_data(base_path):
     valid_courses = []
     if os.path.exists(master_file):
         try:
-        # 인코딩 안전 처리
+            # 인코딩 안전 처리
             try:
                 df_master = pd.read_csv(master_file, encoding="cp949")
             except UnicodeDecodeError:
@@ -72,7 +73,8 @@ def load_all_data(base_path):
                 st.error(f"⚠️ '{col}' 컬럼이 없습니다. 실제 컬럼: {df_master.columns.tolist()}")
             else:
                 valid_courses = df_master[col].dropna().astype(str).unique().tolist()
-                st.success(f"✅ valid_courses 로드 성공: {len(valid_courses)}개")
+                # [수정됨] 성공 메시지 출력 부분 삭제
+                # st.success(f"✅ valid_courses 로드 성공: {len(valid_courses)}개")
 
         except Exception as e:
             st.exception(e)
@@ -92,7 +94,6 @@ def load_all_data(base_path):
                 df_curr = pd.read_csv(curr_file, encoding='utf-8')
 
             # 프롬프트에 넣기 좋게 텍스트로 변환
-            # 형식: [트랙명] 과정1 -> 과정2 -> 과정3 ...
             grouped = df_curr.groupby(['트랙ID', '트랙명', '트랙설명'])
             for (tid, tname, tdesc), group in grouped:
                 courses = group.sort_values('과정순서')['과정명'].tolist()
@@ -101,9 +102,8 @@ def load_all_data(base_path):
             st.error(f"커리큘럼 로드 실패: {e}")
 
     # ---------------------------------------------------------
-    # 3. [학습] 수정.csv (RAG Knowledge Base)  
+    # 3. [학습] 수정.csv (RAG Knowledge Base)
     # ---------------------------------------------------------
-    # rag_file = os.path.join(DATA_DIR, "수정실험.csv")
     rag_file = os.path.join(DATA_DIR, "01_병합+정규화_Data.csv")
     rag_data = []
     if os.path.exists(rag_file):
@@ -135,13 +135,30 @@ valid_courses, rag_data, curriculum_text = load_all_data(BASE_DIR)
 # ==========================================
 # 3. 메인 UI
 # ==========================================
-st.title("🏭 K-하이테크 기업 진단 및 강의 추천 (커리큘럼 기반)")
+
+# [수정됨] 헤더 레이아웃: 제목 변경 및 학교 이름 우측 상단 배치
+col_header_L, col_header_R = st.columns([8, 2])
+
+with col_header_L:
+    st.title("한국공학대학교 기업 맞춤형 교육 커리큘럼 추천 시스템")
+
+with col_header_R:
+    # 학교 로고 대신 텍스트를 깔끔하게 배치 (CSS 사용)
+    st.markdown(
+        """
+        <div style="text-align: right; margin-top: 20px;">
+            <h3 style="color: #003764; margin-bottom: 0;">한국공학대학교</h3>
+            <p style="color: gray; font-size: 0.8em;">Korea Polytechnic University</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if not valid_courses:
     st.stop()
 
 with st.container():
-    st.info("💡 '수정.csv'의 노란색 컬럼에 해당하는 기업 정보를 입력해주세요.")
+    # [수정됨] 파란색 안내 메시지(st.info) 삭제됨
 
     with st.form("diagnosis_form"):
         col1, col2 = st.columns(2)
@@ -150,7 +167,7 @@ with st.container():
             corp_type = st.selectbox("기업 유형", ["법인", "개인사업자", "기타"])
         with col2:
             comp_name = st.text_input("지원 기업명", placeholder="(주)OOO")
-            date = st.date_input("수행 일자")
+
 
         st.markdown("---")
         st.subheader("📝 기업 진단 입력")
@@ -190,11 +207,13 @@ if submit:
     rag_context_text = ""
     for i, case in enumerate(top_cases):
         rag_context_text += f"""
-        [유사 사례 {i + 1}]
-        - 상황: {case['issue'][:50]}...
-        - 애로사항: {case['pain'][:50]}...
-        - -> 해결 강의: {case['course']}
-        - -> 결과(To-Be): {case['to_be']}
+        **[유사 사례 {i + 1}]**
+        - **상황:** {case['issue']}
+        - **애로사항:** {case['pain']}
+        - **-> 해결 강의:** {case['course']}
+        - **-> 결과(To-Be):** {case['to_be']}
+
+        ---
         """
 
     available_courses_str = ", ".join(valid_courses)
@@ -251,15 +270,17 @@ if submit:
             model = genai.GenerativeModel("gemini-2.5-flash")
             res = model.generate_content(prompt)
 
-            st.markdown("### 📋 K-하이테크 맞춤형 교육 커리큘럼 제안서")
+            # 결과 출력
+            st.markdown("### 📋 한국공학대학교 맞춤형 교육 커리큘럼 제안서")
             st.divider()
             st.markdown(res.text)
 
-            with st.expander("🔍 AI가 참고한 유사 기업 사례 (RAG)"):
-                st.write(rag_context_text)
+            # [수정됨] RAG 유사 사례 출력 (Expander 제거하고 바로 보이게 수정)
+            st.divider()
+            st.markdown("### 🔍 AI가 참고한 유사 기업 사례 (RAG Data)")
+            st.info(rag_context_text)
 
-            with st.expander("📚 전체 커리큘럼 목록 보기"):
-                st.text(curriculum_text)
+            # [수정됨] '전체 커리큘럼 목록 보기' 기능 삭제됨
 
         except Exception as e:
             st.error(f"분석 중 오류 발생: {e}")
